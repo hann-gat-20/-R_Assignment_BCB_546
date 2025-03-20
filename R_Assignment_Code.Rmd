@@ -421,3 +421,4 @@ Based on the data, the proportions of heterozygosity, homozygosity, and missing 
 
 ### My own visualization
 
+I am thinking about to vusualize the distribution of the type of SNPs among different chromosomes and compare the results between maize and teosinte.
