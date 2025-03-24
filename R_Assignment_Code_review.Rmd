@@ -1,0 +1,436 @@
+---
+title: "R_Assignment_Code"
+author: "Zhanyi"
+date: "2025-03-12"
+output: html_document
+---
+### Review by Hannah Gates ###
+Throughout this .Rmd file, my comments will be marked with "$" to differentiate from other comments using "#"
+
+$ My first suggestion is that your current directory on github is "-R_Assignment_BCB_546" however, the "-R" portion of the name cannot be opened in terminal due to "-R" being an invalid command. So just taking the "-" off allows terminal/ linux users to open your directory after performing git clone.
+
+
+# R Assignment Zhanyi Yao
+
+## Analysis Preparation
+
+Before the analysis, I cleared the workspace and loaded the libraries needed first.
+```{R}
+rm(list = ls())
+library(tidyr)
+library(tidyverse)
+```
+
+## Data Inspection
+
+### Inspection of 'fang_et_al_genotypes.txt'
+
+Load the data of fang_et_al_genotypes.txt for inspection.
+```{R}
+file_path <- "fang_et_al_genotypes.txt"
+data <- read_delim(file_path, delim="\t")
+```
+
+Check the size of fang_et_al_genotypes.txt in MB.
+```{R}
+file_size <- file.info(file_path)[1,1]/1000000
+print(file_size)
+```
+
+Check the data frame dimensions of fang_et_al_genotypes.txt, returning # of rows and columns.
+```{R}
+dim(data)
+```
+
+Check the first and last few rows of fang_et_al_genotypes.txt for metadata.
+```{R}
+head(data)
+tail(data)
+```
+
+Check the last column of the rows loaded above.
+```{R}
+get_last_columns <- function(data, columns_to_return = 1) {
+  last_column <- ncol(data)
+  last_n_columns <- data.frame(data[,(last_column-columns_to_return+1):last_column])
+  return(last_n_columns)
+}
+data_last_column_only <- get_last_columns(data)
+
+head(data_last_column_only)
+tail(data_last_column_only)
+```
+
+Check the missing SNPs in fang_et_al_genotypes,txt.
+```{R}
+missing_count <- function(data) {
+  length(grep("\\?",data))
+}
+SNP_missing_count <- sapply(data[,4:ncol(data)],missing_count)
+SNP_missing<- sort(SNP_missing_count)
+head(SNP_missing, n = 5)
+tail(SNP_missing, n = 5)
+```
+
+Check the missing samples in fang_et_al_genotypes.txt.
+```{R}
+sample_missing_count <- apply(data,1,missing_count)
+row_name <- unlist(data[,1],use.names = FALSE)
+names(sample_missing_count) <- row_name
+head(sample_missing_count, n=5)
+sample_missing_count[sample_missing_count == 0]
+sample_missing_count[sample_missing_count == max(sample_missing_count)]
+sample_missing_count[sample_missing_count == min(sample_missing_count)]
+```
+
+Check the five least and five most common groups of genes in fang_et_al_genotypes.txt.
+```{R}
+groups <- unlist(data[,3],use.names = FALSE)
+common_groups<- sort(table(groups))
+head(common_groups, n = 5)
+tail(common_groups, n = 5)
+```
+
+Conclusion of the Inspection of fang_et_al_genotypes.txt.
+- The file contains 2,783 lines and has a size of 11.06 MB. While the number of lines isn't excessive, the file appears to have a relatively large number of words and characters. This is due to each line having multiple columns—one for each single nucleotide polymorphism (SNP) in the sample, along with some metadata.
+- Since the first line includes metadata with the header camp, and the tail contains no metadata, it seems that metadata is only present for the first row. This suggests that there are 2,782 samples in the SNP dataset.
+- Upon examining the number of columns, I found 986 in total. The first three columns contain metadata (sample ID, JG_OTU, and group), indicating that each sample has information on 983 SNPs.
+- Some SNPs are missing data, with instances of "?/?". I couldn't find any sample without a "?/?" for at least one SNP, so this seems to be quite common.
+- The SNP with the most missing data is PZB01223.4, with 509 samples missing data at that location. On the other hand, the SNP with the least missing data is PZA00538.8, missing data in only 6 samples.
+- The sample with the most missing data is TAMex0516.1, which has missing data for 398 SNPs, while DOE5H-1556 has the fewest, with only 5 SNPs missing data. 
+- No duplicate gene types were found, though there were duplicate groups. The largest group was the ZMMLR group, with 1,256 members, while the smallest group was the ZMXNT group, with only 4 members.
+
+### Inspection of 'snp_position.txt'
+
+Load the data of snp_position.txt for inspection.
+```{R}
+snp_path <- "snp_position.txt"
+snp <- read_delim(snp_path, delim="\t")
+```
+
+Check the size of snp_position.txt in MB.
+```{R}
+snp_size <- file.info(snp_path)[1,1]/1000000
+print(snp_size)
+```
+
+Check the data frame dimensions of snp_position.txt, returning # of rows and columns.
+```{R}
+dim(snp)
+```
+
+Check the first and last few rows of snp_position.txt for metadata.
+```{R}
+head(snp)
+tail(snp)
+```
+
+Check the last column of the rows loaded above.
+```{R}
+snp_last_column_only <- get_last_columns(snp)
+
+head(snp_last_column_only)
+tail(snp_last_column_only)
+```
+
+Check the five least and most common chromosomes in snp_position.txt.
+```{R}
+chromosomes <- unlist(snp[,3],use.names = FALSE)
+common_chromosomes<- sort(table(chromosomes))
+head(common_chromosomes, n = 5)
+tail(common_chromosomes, n = 5)
+```
+
+Check the five least and most common genes in snp_position.txt.
+```{R}
+genes <- unlist(snp[,9],use.names = FALSE)
+common_genes<- sort(table(genes))
+head(common_genes, n = 5)
+tail(common_genes, n = 5)
+```
+
+Conclusion of the Inspection of snp_position.txt.
+- The file contains 984 lines and has a size of 83 KB, making it significantly smaller than the fang_et_al_genotypes.txt file, as expected.
+- The file doesn't seem to include any metadata, with only the first line showing the column names. There are 15 columns in total, suggesting that the file documents 983 individual SNPs.
+- The chromosomes with the most SNPs are chromosome 1 (155 SNPs), chromosome 2 (127 SNPs), chromosome 5 (122 SNPs), chromosomes 3 (107 SNPs), and chromosome 7 (97 SNPs). Chromosome 10 has the fewest, with only 53 SNPs. 
+- There are SNPs appear in multiple chromosomes or not defined.
+- The most common genes containing SNPs are zmm28 (11 SNPs), PZA03450 (9 SNPs), zag1 (8 SNPs), ra1 (8 SNPs), and PZA03455 (8 SNPs). I assume there will be more genes with 8 SNPs that are not listed.
+
+
+$ I liked your line by line explanation of what you were performing and why for the data inspection, it was very thorough. I find it helpful for beginner R users.
+
+
+## Data Processing
+
+Process fang_el_at_genotypes.txt to obtain the desired columns in required format.
+```{R}
+extracted_data <- filter(data, `Group` %in% c("ZMMIL", "ZMMLR", "ZMMMR"))
+extracted_data <- arrange(extracted_data, `Sample_ID`)
+transposed_data <- as_tibble(t(extracted_data[,4:ncol(extracted_data)]),rownames = "SNP_ID")
+colnames(transposed_data) <- c("SNP_ID",unlist(extracted_data[1:nrow(extracted_data),1]), use.names = FALSE)
+head(extracted_data)
+head(transposed_data)
+```
+
+Load and merge the data from snp_position.txt into the extracted data from fang_et_al_genotypes.txt.
+```{R}
+merged_data <- merge(snp[,c(1,3,4)], transposed_data, by="SNP_ID", all = TRUE)
+merged_data <- as_tibble(merged_data)
+head(merged_data)
+```
+
+Rearrange the data based on position.
+```{R}
+merged_data$Position <- as.numeric(merged_data$Position)
+merged_data <- arrange(merged_data, `Position`)
+```
+
+### Maize
+Create folders for maize files.
+```{R}
+main_dir <- paste(getwd(),"Maize", sep="/")
+sub_dir <- c("increasing","decreasing")
+list_of_paths <- paste(main_dir,sub_dir, sep="/")
+sapply(list_of_paths,dir.create, recursive = TRUE)
+```
+
+10 files with SNPs ordered based on increasing position, with missing data encoded by "?".
+```{R}
+chromosome_file <- function(dataset_row, species, order, missing_marker, dataset){
+  dataset_row <- gsub("\\?", missing_marker, dataset_row)
+  dataset_row <- as.data.frame(t(dataset_row))
+  chromosome <- dataset_row["Chromosome"]
+  output_file <- sprintf("%s/%s/%s/chromosome_%s.txt",getwd(),species,order,chromosome)
+  if (file.exists(output_file) == FALSE) {
+            write.table(
+              t(colnames(dataset)), output_file, sep="\t", row.names = FALSE, 
+              col.names = FALSE, append = TRUE, quote = FALSE)
+  }
+  write.table(
+    dataset_row, output_file, sep="\t", row.names = FALSE, 
+    col.names = FALSE, append = TRUE, quote = FALSE)
+}
+
+merged_data_filtered <- filter(merged_data, !is.na(Position))
+apply(merged_data_filtered,1,chromosome_file,species="Maize",order="increasing", missing_marker="\\?",dataset=merged_data_filtered)
+```
+
+10 files with SNPs ordered based on decreasing position, with missing data encoded by "-".
+```{R}
+merged_data_filtered <- arrange(merged_data_filtered, desc(`Position`))
+apply(merged_data_filtered,1,chromosome_file,species="Maize",order="decreasing", missing_marker="\\-",dataset=merged_data_filtered)
+```
+
+Files for multiple and unknown positions.
+```{R}
+misc_file <- function(dataset_row, species,dataset){
+  dataset_row <- as.data.frame(t(dataset_row))
+  chromosome <- dataset_row["Chromosome"]
+  position <- dataset_row["Position"]
+  output_file <- sprintf("%s/%s/chromosome_%s.txt",getwd(),species,chromosome)
+  if (is.na(position) == TRUE){
+    if ((chromosome %in% c("multiple", "unknown")) == FALSE){
+      chromosome <- "multiple"
+      output_file <- sprintf("%s/%s/chromosome_%s.txt",getwd(),species,chromosome)
+    }
+    if (file.exists(output_file) == FALSE) {
+            write.table(
+              t(colnames(dataset)), output_file, sep="\t", row.names = FALSE, 
+              col.names = FALSE, append = TRUE, quote = FALSE)
+    }
+            write.table(
+              dataset_row, output_file, sep="\t", row.names = FALSE, 
+              col.names = FALSE, append = TRUE, quote = FALSE)
+  }
+}
+apply(merged_data,1, misc_file, species="Maize",dataset=merged_data)
+```
+
+### Teosinte
+
+Process fang_el_at_genotypes.txt to obtain the desired columns in required format.
+```{R}
+extracted_data <- filter(data, `Group` %in% c("ZMPBA", "ZMPIL", "ZMPJA"))
+extracted_data <- arrange(extracted_data, `Sample_ID`)
+transposed_data <- as_tibble(t(extracted_data[,4:ncol(extracted_data)]),rownames = "SNP_ID")
+colnames(transposed_data) <- c("SNP_ID",unlist(extracted_data[1:nrow(extracted_data),1]), use.names = FALSE)
+head(extracted_data)
+head(transposed_data)
+```
+
+Load and merge the data from snp_position.txt into the extracted data from fang_et_al_genotypes.txt.
+```{R}
+snp_data = read_delim("snp_position.txt", "\t")
+merged_data <- merge(snp_data[,c(1,3,4)], transposed_data, by="SNP_ID", all = TRUE)
+merged_data <- as_tibble(merged_data)
+head(merged_data)
+```
+
+Rearrange the data based on position.
+```{R}
+merged_data$Position <- as.numeric(merged_data$Position)
+merged_data <- arrange(merged_data, `Position`)
+```
+
+Create folders for teosinte files.
+```{R}
+main_dir <- paste(getwd(),"Teosinte", sep="/")
+sub_dir <- c("increasing","decreasing")
+list_of_paths <- paste(main_dir,sub_dir, sep="/")
+sapply(list_of_paths,dir.create, recursive = TRUE)
+```
+
+10 files with SNPs ordered based on increasing position, with missing data encoded by "?".
+```{R}
+merged_data_filtered <- filter(merged_data, !is.na(Position))
+apply(merged_data_filtered,1,chromosome_file,species="Teosinte",order="increasing", 
+missing_marker="\\?",dataset=merged_data_filtered)
+```
+
+10 files with SNPs ordered based on decreasing position, with missing data encoded by "-".
+```{R}
+merged_data_filtered <- arrange(merged_data_filtered, desc(`Position`))
+apply(merged_data_filtered,1,chromosome_file,species="Teosinte",order="decreasing", 
+missing_marker="\\-",dataset=merged_data_filtered)
+```
+
+Files for multiple and unknown positions.
+```{R}
+apply(merged_data,1, misc_file, species="Teosinte",dataset=merged_data)
+```
+
+
+$ I like that you made separate output directories for the teosinte and maize files to be put into. It keeps it organized and clean. The code looks clean.
+
+
+## Data Visualization
+
+### SNPs per chromosome
+
+Load maize data.
+```{R}
+extracted_data <- filter(data, `Group` %in% c("ZMMIL", "ZMMLR", "ZMMMR"))
+extracted_data <- arrange(extracted_data, `Sample_ID`)
+transposed_data <- as_tibble(t(extracted_data[,4:ncol(extracted_data)]),rownames = "SNP_ID")
+colnames(transposed_data) <- c("SNP_ID",unlist(extracted_data[1:nrow(extracted_data),1]), use.names = FALSE)
+snp_data = read_delim("snp_position.txt", "\t")
+merged_data <- merge(snp_data[,c(1,3,4)], transposed_data, by="SNP_ID", all = TRUE)
+merged_data <- as_tibble(merged_data)
+merged_data$Position <- as.numeric(merged_data$Position)
+merged_data <- arrange(merged_data, `Position`)
+maize_merged_data <- pivot_longer(
+  merged_data,
+  cols = 4:ncol(merged_data),
+  values_to = "SNP"
+)
+
+proper_chromosome_order <- c(
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown"
+)
+ggplot(data = maize_merged_data) + geom_bar(mapping = aes(x=Chromosome)) +
+scale_x_discrete(limits = proper_chromosome_order)+
+ggtitle("Maize SNP Distribution Between Chromosomes")+
+theme(plot.title = element_text(hjust = 1))
+```
+
+Load teosinte data.
+```{R}
+# Teosinte data.
+extracted_data <- filter(data, `Group` %in% c("ZMPBA", "ZMPIL", "ZMPJA"))
+extracted_data <- arrange(extracted_data, `Sample_ID`)
+transposed_data <- as_tibble(t(extracted_data[,4:ncol(extracted_data)]),rownames = "SNP_ID")
+colnames(transposed_data) <- c("SNP_ID",unlist(extracted_data[1:nrow(extracted_data),1]), use.names = FALSE)
+snp_data = read_delim("snp_position.txt", "\t")
+merged_data <- merge(snp_data[,c(1,3,4)], transposed_data, by="SNP_ID", all = TRUE)
+merged_data <- as_tibble(merged_data)
+merged_data$Position <- as.numeric(merged_data$Position)
+merged_data <- arrange(merged_data, `Position`)
+teosinte_merged_data <- pivot_longer(
+  merged_data,
+  cols = 4:ncol(merged_data),
+  values_to = "SNP"
+)
+
+proper_chromosome_order <- c(
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown"
+)
+ggplot(data = teosinte_merged_data) + geom_bar(mapping = aes(x=Chromosome)) +
+scale_x_discrete(limits = proper_chromosome_order) +
+ggtitle("Teosinte SNP Distribution Between Chromosomes")+
+theme(plot.title = element_text(hjust = 1))
+```
+Observation:
+Based on the data, it appears that both maize and teosinte have a similar distribution of SNPs across chromosomes. However, maize has a higher number of SNPs per position, as indicated by the larger number of columns in the dataframe (1576 for maize compared to 978 for teosinte).
+
+Distribution of SNPs (# of SNPs)
+
+Load maize data.
+```{R}
+ggplot(data = maize_merged_data) + 
+  geom_density(aes(x=Position, color=Chromosome,y = after_stat(count))) + 
+  theme_minimal()+
+  ggtitle("Maize SNP Distribution on Chromosomes")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Load teosinte data.
+```{R}
+ggplot(data = teosinte_merged_data) + 
+  geom_density(aes(x=Position, color=Chromosome,y = after_stat(count))) + 
+  theme_minimal()+
+  ggtitle("Teosinte SNP Distribution on Chromosomes")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+Observation:
+The data suggests that the distributions of SNPs are similar between maize and teosinte, which is expected since their SNP positions are identical. Notable observations include chromosome 7, where the SNP positions are more concentrated in the middle, and chromosome 1, which shows a bimodal distribution with a higher concentration of SNPs at both ends.
+
+Conclusion:
+Based on the analysis, we can conclude that while maize and teosinte share similar SNP distributions across chromosomes, there are some distinct patterns worth noting. Chromosome 7 exhibits a concentration of SNPs in the middle, possibly indicating a unique region of interest in both species. Meanwhile, chromosome 1 shows a bimodal distribution with SNPs concentrated at the ends, suggesting a potential structural or functional distinction at these loci. Overall, these distribution patterns provide valuable insights into the genomic differences and similarities between maize and teosinte, potentially guiding further studies into their evolutionary or functional significance.
+
+### Missing data and amount of heterozygosiity
+```{R}
+# data
+data_long <- pivot_longer(data, cols = 4:ncol(data), values_to = "SNP")
+# type of SNPs
+find_snp_type <- function(SNP){
+  SNP_string <- toString(SNP)
+  SNP_positions <- strsplit(SNP_string,split="")
+  position_1 <- SNP_positions[[1]][1]
+  position_2 <- SNP_positions[[1]][3]
+  if (position_1 == "?" | position_2 == "?"){
+    return("missing")
+  }
+  else if (position_1 == position_2){
+    return("homozygous")
+  }
+  else if (position_1 != position_2){
+    return("heterozygous")
+  }
+}
+vectorized_find <- Vectorize(find_snp_type)
+data_long <- mutate(data_long, SNP_type = vectorized_find(SNP))
+# ggplot
+ggplot(data = data_long) + 
+  geom_bar(mapping = aes(x = Group, fill = SNP_type), position = "fill")+
+  ggtitle("Distribution of Type of SNP among Groups")+
+  theme(plot.title = element_text(hjust = 1))+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
+```{R}
+ggplot(data = data_long) + 
+  geom_bar(mapping = aes(x = Sample_ID, fill = SNP_type), position = "fill")+
+  ggtitle("Distribution of Tpye of SNP among Groups")+
+  theme(plot.title = element_text(hjust = 1))+
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.line.x = element_blank())
+```
+
+Observation:
+Based on the data, the proportions of heterozygosity, homozygosity, and missing data are relatively consistent across groups and samples. However, there are notable outliers: TRIPS, which shows a higher proportion of missing data, and ZMMIL, which has an exceptionally low number of heterozygous SNPs. These outliers may warrant further investigation to understand the underlying causes and their potential implications for the analysis.
+
+### My own visualization
+
+I am thinking about to vusualize the distribution of the type of SNPs among different chromosomes and compare the results between maize and teosinte.
+
+
+$ For the ggplots, I suggest making another directory for the output plots so that you can have those saved.
